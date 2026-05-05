@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Herramienta de Madurez BIM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bim-0: #ef4444;
+      --bim-1: #f97316;
+      --bim-2: #eab308;
+      --bim-3: #22c55e;
+      --bim-4: #06b6d4;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* Smooth progress bar */
+    .progress-fill { transition: width 0.5s ease; }
+
+    /* Option cards */
+    .option-card {
+      cursor: pointer;
+      transition: all 0.18s ease;
+      border: 2px solid #e2e8f0;
+    }
+    .option-card:hover { border-color: #60a5fa; background: #eff6ff; }
+    .option-card.selected {
+      border-color: #2563eb;
+      background: #dbeafe;
+    }
+    .option-card.selected .option-dot {
+      background: #2563eb;
+    }
+    .option-dot {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 2px solid #94a3b8;
+      flex-shrink: 0;
+      transition: all 0.18s;
+    }
+
+    /* Maturity badge */
+    .badge-0 { background: #fef2f2; color: #b91c1c; border: 2px solid #fca5a5; }
+    .badge-1 { background: #fff7ed; color: #c2410c; border: 2px solid #fdba74; }
+    .badge-2 { background: #fefce8; color: #a16207; border: 2px solid #fde047; }
+    .badge-3 { background: #f0fdf4; color: #15803d; border: 2px solid #86efac; }
+    .badge-4 { background: #ecfeff; color: #0e7490; border: 2px solid #67e8f9; }
+
+    /* Dimension score bars */
+    .dim-bar { height: 10px; border-radius: 5px; transition: width 0.8s ease; }
+
+    /* Print */
+    @media print {
+      .no-print { display: none !important; }
+      .screen { display: block !important; }
+      #screen-welcome, #screen-assessment { display: none !important; }
+    }
+
+    /* Radar chart container */
+    #radarContainer { position: relative; max-width: 460px; margin: 0 auto; }
+
+    /* Scroll to top on screen change */
+    html { scroll-behavior: smooth; }
+
+    .level-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .level-pip {
+      height: 12px;
+      flex: 1;
+      border-radius: 3px;
+      background: #e2e8f0;
+      transition: background 0.6s ease;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 1 · WELCOME
+════════════════════════════════════════════════════ -->
+<div id="screen-welcome" class="screen active">
+  <div class="min-h-screen flex flex-col">
+    <!-- Hero -->
+    <div class="bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700 text-white px-6 py-16 text-center">
+      <div class="max-w-2xl mx-auto">
+        <div class="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1 text-sm mb-6">
+          <span class="w-2 h-2 rounded-full bg-cyan-300 animate-pulse"></span>
+          Herramienta de Evaluación Organizacional
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 leading-tight">
+          Índice de Madurez <span class="text-cyan-300">BIM</span>
+        </h1>
+        <p class="text-blue-100 text-lg max-w-xl mx-auto mb-8">
+          Evalúe el nivel de madurez BIM de su organización en 8 dimensiones clave y obtenga un diagnóstico detallado con recomendaciones personalizadas.
+        </p>
+        <!-- Stats row -->
+        <div class="flex flex-wrap justify-center gap-8 text-sm text-blue-100 mb-10">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white">8</div>
+            <div>Dimensiones</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white">32</div>
+            <div>Preguntas</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white">~15</div>
+            <div>Minutos</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white">5</div>
+            <div>Niveles</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="flex-1 flex items-start justify-center px-4 py-12">
+      <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg p-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-6">Datos de su organización</h2>
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la organización <span class="text-red-500">*</span></label>
+            <input id="orgName" type="text" placeholder="Ej. Constructora Ibérica S.L."
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Sector de actividad <span class="text-red-500">*</span></label>
+            <select id="orgSector"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Seleccione un sector…</option>
+              <option>Arquitectura / Diseño</option>
+              <option>Ingeniería de estructuras</option>
+              <option>Ingeniería de instalaciones (MEP)</option>
+              <option>Construcción / Contratista general</option>
+              <option>Promotora / Desarrollo inmobiliario</option>
+              <option>Infraestructuras y obra civil</option>
+              <option>Facility Management</option>
+              <option>Administración pública</option>
+              <option>Consultoría BIM</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tamaño de la organización <span class="text-red-500">*</span></label>
+            <select id="orgSize"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Seleccione un tamaño…</option>
+              <option>Microempresa (1–9 empleados)</option>
+              <option>Pequeña empresa (10–49 empleados)</option>
+              <option>Mediana empresa (50–249 empleados)</option>
+              <option>Gran empresa (≥250 empleados)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Persona que completa la evaluación</label>
+            <input id="evaluatorName" type="text" placeholder="Nombre y cargo (opcional)"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        <div id="welcomeError" class="hidden mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2"></div>
+
+        <button onclick="startAssessment()"
+          class="mt-8 w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition-colors text-base">
+          Comenzar evaluación →
+        </button>
+
+        <p class="text-xs text-center text-gray-400 mt-4">Los datos se procesan localmente. No se envía información a ningún servidor.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 2 · ASSESSMENT
+════════════════════════════════════════════════════ -->
+<div id="screen-assessment" class="screen">
+  <!-- Sticky header -->
+  <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center gap-4">
+      <div class="flex-1">
+        <div class="flex justify-between text-xs text-gray-500 mb-1">
+          <span id="progressLabel">Dimensión 1 de 8</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div id="progressBar" class="progress-fill bg-blue-600 h-2 rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="max-w-3xl mx-auto px-4 py-8">
+    <!-- Dimension header -->
+    <div id="dimHeader" class="mb-8 p-6 rounded-2xl bg-gradient-to-r from-blue-700 to-cyan-600 text-white">
+      <div id="dimIcon" class="text-4xl mb-2"></div>
+      <div id="dimIndex" class="text-sm font-medium text-blue-200 mb-1"></div>
+      <h2 id="dimTitle" class="text-2xl font-bold"></h2>
+      <p id="dimDesc" class="text-blue-100 mt-1 text-sm"></p>
+    </div>
+
+    <!-- Questions -->
+    <div id="questionsContainer" class="space-y-8"></div>
+
+    <!-- Navigation -->
+    <div class="flex gap-3 mt-10">
+      <button id="btnPrev" onclick="navigate(-1)"
+        class="flex-1 border border-gray-300 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors">
+        ← Anterior
+      </button>
+      <button id="btnNext" onclick="navigate(1)"
+        class="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition-colors">
+        Siguiente →
+      </button>
+    </div>
+    <div id="assessError" class="hidden mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-center"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 3 · RESULTS
+════════════════════════════════════════════════════ -->
+<div id="screen-results" class="screen">
+  <div class="max-w-4xl mx-auto px-4 py-10">
+
+    <!-- Header -->
+    <div class="text-center mb-10 no-print">
+      <h1 class="text-3xl font-bold text-gray-900">Resultados de la Evaluación BIM</h1>
+      <p id="resOrgName" class="text-gray-500 mt-1"></p>
+    </div>
+
+    <!-- Overall score card -->
+    <div id="overallCard" class="rounded-2xl p-8 mb-8 text-center shadow-md">
+      <div class="text-sm font-medium uppercase tracking-widest mb-2 opacity-70">Nivel de Madurez BIM Global</div>
+      <div id="overallLevel" class="text-5xl font-black mb-1"></div>
+      <div id="overallLevelName" class="text-xl font-semibold mb-4"></div>
+      <!-- 5-pip indicator -->
+      <div class="level-indicator max-w-xs mx-auto mb-4" id="levelPips"></div>
+      <div id="overallScore" class="text-3xl font-bold mb-1"></div>
+      <div class="text-sm opacity-70">Puntuación total (máximo 128 puntos)</div>
+      <p id="overallDesc" class="mt-4 text-sm max-w-lg mx-auto opacity-80 leading-relaxed"></p>
+    </div>
+
+    <!-- Radar chart + dim scores -->
+    <div class="grid md:grid-cols-2 gap-8 mb-8">
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="font-semibold text-gray-800 mb-4 text-center">Perfil por Dimensión</h3>
+        <div id="radarContainer">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="font-semibold text-gray-800 mb-4">Puntuaciones por Dimensión</h3>
+        <div id="dimScores" class="space-y-4"></div>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="bg-white rounded-2xl shadow p-6 mb-8">
+      <h3 class="font-semibold text-gray-800 mb-5 text-lg">Recomendaciones Prioritarias</h3>
+      <div id="recommendations" class="space-y-4"></div>
+    </div>
+
+    <!-- Maturity scale reference -->
+    <div class="bg-white rounded-2xl shadow p-6 mb-8">
+      <h3 class="font-semibold text-gray-800 mb-4 text-lg">Escala de Madurez BIM</h3>
+      <div class="space-y-3" id="maturityScale"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="flex flex-wrap gap-3 justify-center no-print">
+      <button onclick="window.print()"
+        class="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+        🖨️ Imprimir / Guardar PDF
+      </button>
+      <button onclick="restartTool()"
+        class="px-6 py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-semibold transition-colors">
+        ↺ Nueva evaluación
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════ -->
+<script>
+/* ── DATA ─────────────────────────────────────────── */
+const LEVELS = [
+  { id: 0, name: 'Inicial',      color: '#ef4444', bg: '#fef2f2', text: '#b91c1c', desc: 'La organización no tiene procesos BIM formales. El trabajo se realiza con métodos tradicionales (papel, CAD 2D). BIM es apenas conocido o se percibe como irrelevante.' },
+  { id: 1, name: 'Consciente',   color: '#f97316', bg: '#fff7ed', text: '#c2410c', desc: 'Existe conciencia sobre BIM y se han dado primeros pasos aislados. Hay algún uso puntual de software 3D, pero sin metodología, sin colaboración interdisciplinar y sin procesos establecidos.' },
+  { id: 2, name: 'Definido',     color: '#eab308', bg: '#fefce8', text: '#a16207', desc: 'La organización cuenta con procesos BIM básicos documentados. Hay un equipo o roles BIM identificados, se trabaja con CDE básico y se aplica BIM en proyectos seleccionados de forma colaborativa.' },
+  { id: 3, name: 'Integrado',    color: '#22c55e', bg: '#f0fdf4', text: '#15803d', desc: 'BIM está integrado en los flujos de trabajo habituales. La mayoría de proyectos usan BIM, existe una estrategia clara, los datos fluyen entre disciplinas y se aplican estándares reconocidos (ISO 19650).' },
+  { id: 4, name: 'Optimizado',   color: '#06b6d4', bg: '#ecfeff', text: '#0e7490', desc: 'BIM está completamente integrado y se gestiona de forma continua. La organización es referente en el sector, utiliza datos del ciclo de vida completo, mide el ROI y contribuye a la evolución de la industria.' },
+];
+
+const DIMENSIONS = [
+  {
+    icon: '🎯', title: 'Estrategia y Liderazgo',
+    desc: 'Visión, compromiso directivo y estructura organizativa para BIM.',
+    questions: [
+      {
+        text: '¿Existe una estrategia BIM formal en su organización?',
+        options: [
+          'No existe ninguna estrategia BIM.',
+          'Se ha debatido pero no está formalizada.',
+          'Existe una estrategia básica documentada.',
+          'Estrategia BIM completa con objetivos medibles.',
+          'BIM está integrado en el plan de negocio y se revisa periódicamente.',
+        ],
+      },
+      {
+        text: '¿El liderazgo directivo apoya activamente las iniciativas BIM?',
+        options: [
+          'No hay consciencia ni apoyo directivo.',
+          'Apoyo puntual sin compromiso sostenido.',
+          'Apoyo directivo moderado con asignación de recursos básicos.',
+          'Compromiso claro de la dirección con inversión significativa.',
+          'BIM es una prioridad estratégica a nivel de dirección ejecutiva.',
+        ],
+      },
+      {
+        text: '¿Tiene su organización roles BIM definidos (BIM Manager, Coordinador BIM…)?',
+        options: [
+          'No existen roles BIM.',
+          'Alguien gestiona BIM de forma informal.',
+          'Existe al menos un rol BIM formal.',
+          'Equipo BIM dedicado con roles y responsabilidades definidos.',
+          'Estructura organizativa BIM completa integrada en el organigrama.',
+        ],
+      },
+      {
+        text: '¿Cuenta con un plan de implementación BIM con hitos y recursos?',
+        options: [
+          'No hay ningún plan.',
+          'Ideas informales sin planificación.',
+          'Plan básico con algunos hitos.',
+          'Plan detallado con recursos y cronograma.',
+          'Plan estratégico BIM multianual en continua revisión y mejora.',
+        ],
+      },
+    ],
+    recommendations: [
+      'Elabore un BIM Strategic Plan con objetivos SMART a 1, 3 y 5 años.',
+      'Designe un BIM Manager con autoridad y presupuesto asignado.',
+      'Presente el caso de negocio BIM a la dirección con métricas de ROI.',
+      'Establezca un Comité BIM con representación de las áreas clave.',
+    ],
+  },
+  {
+    icon: '⚙️', title: 'Procesos y Métodos de Trabajo',
+    desc: 'Flujos de trabajo BIM documentados, desde diseño hasta operación.',
+    questions: [
+      {
+        text: '¿Sus procesos de diseño y construcción están documentados con metodología BIM?',
+        options: [
+          'Todo el trabajo es en 2D o papel.',
+          'Uso ocasional de 3D sin metodología.',
+          'Algunos procesos documentados con BIM.',
+          'Mayoría de procesos documentados y estandarizados.',
+          'Todos los procesos integrados en un flujo BIM continuo.',
+        ],
+      },
+      {
+        text: '¿Utiliza EIR (Requisitos de Información del Contratante) y BEP (Plan de Ejecución BIM)?',
+        options: [
+          'No conoce estos documentos.',
+          'Ha oído hablar de ellos pero no los utiliza.',
+          'Los usa en algunos proyectos de forma básica.',
+          'Los usa sistemáticamente en la mayoría de proyectos.',
+          'Forman parte obligatoria de todos los proyectos con plantillas propias.',
+        ],
+      },
+      {
+        text: '¿Cómo gestiona la coordinación e interferencias entre disciplinas (clash detection)?',
+        options: [
+          'Los problemas se detectan en obra.',
+          'Revisión manual de planos 2D.',
+          'Se realizan revisiones BIM ocasionales.',
+          'Proceso de detección de interferencias sistemático.',
+          'Coordinación BIM automatizada y continua en todos los proyectos.',
+        ],
+      },
+      {
+        text: '¿Incluye BIM en las fases de operación y mantenimiento (Facility Management)?',
+        options: [
+          'BIM no llega a la fase de operación.',
+          'Se ha explorado conceptualmente.',
+          'Algún proyecto piloto de BIM para FM.',
+          'BIM para FM aplicado en proyectos clave.',
+          'As-Built BIM integrado con sistemas de gestión de activos (CAFM/CMMS).',
+        ],
+      },
+    ],
+    recommendations: [
+      'Desarrolle un mapa de procesos BIM (BIM Process Map) con las fases y entregables de cada proyecto.',
+      'Implemente plantillas de BEP y EIR adaptadas al sector.',
+      'Establezca una rutina de revisiones de coordinación BIM (clash detection meetings).',
+      'Explore la extensión de BIM al ciclo de vida completo del activo (LOD 500 / As-Built).',
+    ],
+  },
+  {
+    icon: '💻', title: 'Tecnología y Software',
+    desc: 'Herramientas BIM, CDE e interoperabilidad tecnológica.',
+    questions: [
+      {
+        text: '¿Qué herramientas BIM utiliza su organización?',
+        options: [
+          'Solo CAD 2D u otras herramientas no-BIM.',
+          'Software BIM básico de forma aislada.',
+          'Suite de software BIM por disciplina.',
+          'Plataforma BIM integrada multidisciplinar.',
+          'Ecosistema BIM completo con alta interoperabilidad y automatización.',
+        ],
+      },
+      {
+        text: '¿Dispone de un Entorno Común de Datos (CDE / Common Data Environment)?',
+        options: [
+          'No existe CDE; se comparte información por correo o USB.',
+          'Se usa un servidor de archivos compartido sin control de versiones.',
+          'CDE básico implementado (ACC, BIM 360, ProjectWise…).',
+          'CDE completo con control de versiones y flujos de aprobación.',
+          'CDE avanzado integrado con gestión de proyectos, ERP y analítica.',
+        ],
+      },
+      {
+        text: '¿Utiliza herramientas de revisión y visualización de modelos BIM?',
+        options: [
+          'No se usan herramientas de revisión 3D.',
+          'Visualización básica sin funcionalidad de revisión.',
+          'Herramientas de revisión básicas (Navisworks, Solibri…).',
+          'Revisión colaborativa con múltiples disciplinas.',
+          'Revisión avanzada con realidad aumentada/virtual o gemelo digital.',
+        ],
+      },
+      {
+        text: '¿Gestiona la interoperabilidad mediante IFC u otros estándares abiertos?',
+        options: [
+          'Sin interoperabilidad; solo formatos nativos propietarios.',
+          'Intercambio manual de archivos en formatos nativos.',
+          'Uso ocasional de IFC para intercambio de información.',
+          'IFC como estándar habitual de intercambio entre disciplinas.',
+          'Flujo de trabajo basado en estándares abiertos (IFC, BCF, COBie…).',
+        ],
+      },
+    ],
+    recommendations: [
+      'Evalúe e implemente un CDE adecuado a su tamaño y tipo de proyectos.',
+      'Estandarice el uso de IFC como formato de intercambio interdisciplinar.',
+      'Desarrolle un protocolo de herramientas BIM corporativo (BIM Tool Protocol).',
+      'Explore soluciones de revisión colaborativa y realidad aumentada para control en obra.',
+    ],
+  },
+  {
+    icon: '🗄️', title: 'Gestión de Datos e Información',
+    desc: 'Estructura, calidad y ciclo de vida de la información BIM.',
+    questions: [
+      {
+        text: '¿Tiene definidos los requisitos de información para sus proyectos?',
+        options: [
+          'Sin requisitos de información definidos.',
+          'Requisitos informales o incompletos.',
+          'Requisitos básicos documentados por tipo de proyecto.',
+          'OIR, AIR, PIR y EIR definidos y aplicados sistemáticamente.',
+          'Gestión dinámica de requisitos de información a lo largo de todo el ciclo de vida.',
+        ],
+      },
+      {
+        text: '¿Cómo gestiona la nomenclatura y estructura de los modelos y documentos BIM?',
+        options: [
+          'Sin estándares de nomenclatura.',
+          'Convenciones informales que varían por proyecto.',
+          'Guía de nomenclatura básica documentada.',
+          'Estándar de nomenclatura basado en norma (ISO 19650, BS 1192…).',
+          'Nomenclatura automatizada y validada integrada en el CDE.',
+        ],
+      },
+      {
+        text: '¿Cuenta con una estrategia de gestión del ciclo de vida de los datos BIM?',
+        options: [
+          'Sin gestión del ciclo de vida de datos.',
+          'Archivado básico sin estructura.',
+          'Política básica de retención y archivo de datos.',
+          'Estrategia de datos a lo largo del ciclo de vida del activo.',
+          'Gestión continua de datos con analítica avanzada e IA.',
+        ],
+      },
+      {
+        text: '¿Cómo protege y respalda los datos e información BIM?',
+        options: [
+          'Sin protección ni respaldo específico para datos BIM.',
+          'Respaldos ocasionales manuales.',
+          'Respaldos automatizados periódicos.',
+          'Política de seguridad de datos BIM documentada y aplicada.',
+          'Seguridad BIM avanzada con auditoría, cifrado y cumplimiento regulatorio.',
+        ],
+      },
+    ],
+    recommendations: [
+      'Defina la estructura de información (Information Requirements) siguiendo ISO 19650.',
+      'Implemente una guía de nomenclatura y estructura de carpetas corporativa.',
+      'Establezca una política de clasificación, retención y archivo de datos BIM.',
+      'Audite periódicamente la calidad de los modelos con herramientas como Solibri o Revit Model Checker.',
+    ],
+  },
+  {
+    icon: '👥', title: 'Personas y Formación',
+    desc: 'Competencias, formación continua y cultura BIM del equipo.',
+    questions: [
+      {
+        text: '¿Cuántos profesionales de su organización están formados en BIM?',
+        options: [
+          'Nadie con formación BIM (<5%).',
+          '1–2 personas con conocimiento básico (5–15%).',
+          'Un pequeño equipo formado en BIM (15–40%).',
+          'Mayoría del personal técnico formado (40–75%).',
+          'Todo el personal técnico con formación BIM específica (>75%).',
+        ],
+      },
+      {
+        text: '¿Dispone de un plan de formación BIM continua?',
+        options: [
+          'Sin plan de formación.',
+          'Formación esporádica sin planificación.',
+          'Plan de formación básico anual.',
+          'Plan de formación estructurado con seguimiento y evaluación.',
+          'Programa de desarrollo BIM continuo alineado con la estrategia organizativa.',
+        ],
+      },
+      {
+        text: '¿Cómo evalúa las competencias BIM del equipo?',
+        options: [
+          'No se evalúan competencias BIM.',
+          'Evaluación informal por parte de responsables.',
+          'Evaluaciones periódicas básicas.',
+          'Certificaciones BIM reconocidas por el sector.',
+          'Marco de competencias BIM con evaluación 360° y certificación formal.',
+        ],
+      },
+      {
+        text: '¿Existe cultura de innovación y mejora continua respecto a BIM?',
+        options: [
+          'Resistencia generalizada al cambio.',
+          'Apertura limitada a nuevas metodologías.',
+          'Adopción gradual con algunos equipos innovadores.',
+          'Cultura de mejora continua BIM establecida.',
+          'Organización referente en innovación BIM con contribución a la industria.',
+        ],
+      },
+    ],
+    recommendations: [
+      'Elabore un diagnóstico de competencias BIM por rol y un plan de formación diferenciado.',
+      'Establezca una hoja de ruta de certificaciones BIM (buildingSMART, BRE, ISO…).',
+      'Cree comunidades internas de práctica BIM (BIM Champions, grupos de trabajo).',
+      'Fomente la participación en jornadas, congresos y publicaciones del sector.',
+    ],
+  },
+  {
+    icon: '🤝', title: 'Colaboración y Comunicación',
+    desc: 'Trabajo conjunto con clientes, socios y contratistas usando BIM.',
+    questions: [
+      {
+        text: '¿Cómo colaboran las diferentes disciplinas en los proyectos BIM?',
+        options: [
+          'Sin colaboración interdisciplinar en BIM.',
+          'Intercambio ocasional de archivos entre disciplinas.',
+          'Colaboración básica con reuniones de coordinación periódicas.',
+          'Flujo de colaboración sistemático y bien coordinado.',
+          'Colaboración en tiempo real con plataforma integrada y sin fricción.',
+        ],
+      },
+      {
+        text: '¿Incluye requisitos BIM en los contratos con clientes y contratistas?',
+        options: [
+          'BIM no aparece en los contratos.',
+          'Referencias informales a BIM.',
+          'Cláusulas BIM básicas en algunos contratos.',
+          'BIM contractualmente vinculante en la mayoría de proyectos.',
+          'Marco contractual BIM completo alineado con estándares (CIC BIM Protocol, ISO 19650).',
+        ],
+      },
+      {
+        text: '¿Cómo comunica el valor de BIM a clientes y partes interesadas?',
+        options: [
+          'No se comunica el valor BIM.',
+          'Comunicación informal y no estructurada.',
+          'Presentaciones básicas sobre el valor de BIM.',
+          'Reporting estructurado de beneficios e hitos BIM.',
+          'Demostración cuantificada del ROI BIM con casos de éxito publicados.',
+        ],
+      },
+      {
+        text: '¿Participa en comunidades, grupos de trabajo o iniciativas BIM externas?',
+        options: [
+          'Sin participación externa.',
+          'Participación ocasional en eventos del sector.',
+          'Membresía en alguna asociación o comunidad BIM.',
+          'Participación activa en grupos de trabajo y estándares.',
+          'Liderazgo en iniciativas sectoriales o nacionales BIM.',
+        ],
+      },
+    ],
+    recommendations: [
+      'Adopte un BIM Protocol contractual adaptado a sus proyectos tipo.',
+      'Defina una matriz de responsabilidades BIM (RACI) para cada proyecto.',
+      'Desarrolle un kit de comunicación BIM para presentar el valor a clientes.',
+      'Afíliese a buildingSMART, Asociación BIM España u otras entidades del sector.',
+    ],
+  },
+  {
+    icon: '📋', title: 'Estándares y Normativa',
+    desc: 'Adopción de normas, clasificaciones y requisitos regulatorios BIM.',
+    questions: [
+      {
+        text: '¿Conoce y aplica la norma ISO 19650 (Gestión de la Información)?',
+        options: [
+          'Sin conocimiento de la norma.',
+          'Conocimiento básico sin aplicación práctica.',
+          'Aplicación parcial en algunos proyectos.',
+          'Implementación de ISO 19650 en la mayoría de proyectos.',
+          'Certificación ISO 19650 o cumplimiento pleno demostrado y auditado.',
+        ],
+      },
+      {
+        text: '¿Utiliza sistemas de clasificación normalizados (Uniclass, OmniClass, ETIM…)?',
+        options: [
+          'Sin uso de clasificación normalizada.',
+          'Uso esporádico y no sistemático.',
+          'Aplicación básica de algún sistema de clasificación.',
+          'Clasificación normalizada sistemática en todos los proyectos.',
+          'Sistema de clasificación corporativo basado en estándar, integrado en el CDE.',
+        ],
+      },
+      {
+        text: '¿Cumple con los requisitos BIM locales o nacionales de su mercado?',
+        options: [
+          'Sin conocimiento de requisitos BIM locales/nacionales.',
+          'Conocimiento de los requisitos sin implementación.',
+          'Cumplimiento parcial de algunos requisitos.',
+          'Cumplimiento de los principales requisitos BIM del mercado.',
+          'Liderazgo en cumplimiento y anticipación a futuros requisitos regulatorios.',
+        ],
+      },
+      {
+        text: '¿Dispone de documentación de estándares BIM propios (protocolos, guías de modelado)?',
+        options: [
+          'Sin documentación propia.',
+          'Notas informales sin estructura.',
+          'Guías básicas de uso interno.',
+          'BIM Protocol o Plan de Ejecución BIM corporativo documentado.',
+          'Sistema de gestión de calidad BIM completo, documentado y auditado.',
+        ],
+      },
+    ],
+    recommendations: [
+      'Inicie la adopción de ISO 19650 con una evaluación de brecha (gap analysis).',
+      'Implemente un sistema de clasificación (Uniclass 2015) adaptado a su sector.',
+      'Elabore un BIM Protocol y una BIM Modelling Guide corporativos.',
+      'Monitorice los requisitos BIM del sector público y prepárese para futuros mandatos.',
+    ],
+  },
+  {
+    icon: '🏗️', title: 'Entrega de Proyectos',
+    desc: 'Aplicación real de BIM, medición de beneficios e impacto en proyectos.',
+    questions: [
+      {
+        text: '¿En qué proporción de sus proyectos utiliza BIM actualmente?',
+        options: [
+          'En ningún proyecto (<5%).',
+          'En proyectos puntuales (5–25%).',
+          'En proyectos seleccionados (25–50%).',
+          'En la mayoría de proyectos (50–80%).',
+          'En prácticamente todos los proyectos (>80%).',
+        ],
+      },
+      {
+        text: '¿Utiliza BIM para estimación de costes (5D) y/o planificación (4D)?',
+        options: [
+          'Sin uso de BIM para costes ni planificación.',
+          'Exploración conceptual sin implementación.',
+          'Uso básico de 4D o 5D en algún proyecto.',
+          'Uso sistemático de 4D y/o 5D BIM en varios proyectos.',
+          'Integración completa 4D/5D/6D (sostenibilidad) en todos los proyectos.',
+        ],
+      },
+      {
+        text: '¿Mide los beneficios y el impacto del uso de BIM en sus proyectos?',
+        options: [
+          'Sin métricas de impacto BIM.',
+          'Percepciones informales y subjetivas.',
+          'KPIs básicos definidos pero no siempre monitorizados.',
+          'Seguimiento sistemático de beneficios BIM con datos cuantitativos.',
+          'Sistema de métricas avanzado con benchmarking sectorial y publicación de resultados.',
+        ],
+      },
+      {
+        text: '¿Ha recibido reconocimiento externo por sus logros en BIM?',
+        options: [
+          'Sin reconocimiento externo.',
+          'Mención informal por clientes o partners.',
+          'Participación en premios o concursos BIM.',
+          'Premios, certificaciones o casos de éxito publicados.',
+          'Referente sectorial reconocido a nivel nacional o internacional.',
+        ],
+      },
+    ],
+    recommendations: [
+      'Establezca un programa piloto BIM con proyectos representativos y métricas claras.',
+      'Implemente BIM 4D (planificación) como primer paso hacia usos avanzados.',
+      'Defina un dashboard de KPIs BIM por proyecto (ahorro de costes, reducción de RFIs, plazo…).',
+      'Documente y publique casos de éxito para fortalecer la propuesta de valor ante clientes.',
+    ],
+  },
+];
+
+/* ── STATE ─────────────────────────────────────────── */
+let state = {
+  orgName: '', orgSector: '', orgSize: '', evaluatorName: '',
+  currentDim: 0,
+  answers: Array.from({ length: DIMENSIONS.length }, () => ({})),
+};
+let radarChart = null;
+
+/* ── NAVIGATION ────────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function startAssessment() {
+  const name = document.getElementById('orgName').value.trim();
+  const sector = document.getElementById('orgSector').value;
+  const size = document.getElementById('orgSize').value;
+  const err = document.getElementById('welcomeError');
+
+  if (!name || !sector || !size) {
+    err.textContent = 'Por favor, complete los campos obligatorios marcados con *.';
+    err.classList.remove('hidden');
+    return;
+  }
+  err.classList.add('hidden');
+  state.orgName = name;
+  state.orgSector = sector;
+  state.orgSize = size;
+  state.evaluatorName = document.getElementById('evaluatorName').value.trim();
+  state.currentDim = 0;
+  state.answers = Array.from({ length: DIMENSIONS.length }, () => ({}));
+  renderDimension(0);
+  showScreen('screen-assessment');
+}
+
+function navigate(dir) {
+  const err = document.getElementById('assessError');
+  const dim = DIMENSIONS[state.currentDim];
+
+  // Validate all answered
+  if (dir === 1) {
+    const missing = dim.questions.findIndex((_, qi) => state.answers[state.currentDim][qi] === undefined);
+    if (missing !== -1) {
+      err.textContent = `Por favor, seleccione una respuesta para la pregunta ${missing + 1}.`;
+      err.classList.remove('hidden');
+      // Scroll to unanswered
+      document.querySelectorAll('.question-block')[missing]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    err.classList.add('hidden');
+  }
+
+  const next = state.currentDim + dir;
+  if (next < 0) return;
+  if (next >= DIMENSIONS.length) {
+    showResults();
+    return;
+  }
+  state.currentDim = next;
+  renderDimension(next);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── RENDER DIMENSION ──────────────────────────────── */
+function renderDimension(dimIdx) {
+  const dim = DIMENSIONS[dimIdx];
+  const total = DIMENSIONS.length;
+
+  // Header
+  document.getElementById('dimIcon').textContent = dim.icon;
+  document.getElementById('dimIndex').textContent = `Dimensión ${dimIdx + 1} de ${total}`;
+  document.getElementById('dimTitle').textContent = dim.title;
+  document.getElementById('dimDesc').textContent = dim.desc;
+
+  // Progress
+  const pct = Math.round((dimIdx / total) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `Dimensión ${dimIdx + 1} de ${total}`;
+  document.getElementById('progressPct').textContent = pct + '%';
+
+  // Buttons
+  document.getElementById('btnPrev').style.visibility = dimIdx === 0 ? 'hidden' : 'visible';
+  document.getElementById('btnNext').textContent = dimIdx === total - 1 ? 'Ver resultados →' : 'Siguiente →';
+
+  // Questions
+  const container = document.getElementById('questionsContainer');
+  container.innerHTML = '';
+
+  dim.questions.forEach((q, qi) => {
+    const saved = state.answers[dimIdx][qi];
+    const block = document.createElement('div');
+    block.className = 'question-block bg-white rounded-2xl shadow p-6';
+    block.innerHTML = `
+      <p class="font-medium text-gray-800 mb-4 leading-snug">
+        <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-full text-sm font-bold mr-2">${qi + 1}</span>
+        ${escHtml(q.text)}
+      </p>
+      <div class="space-y-2" id="opts-${dimIdx}-${qi}">
+        ${q.options.map((opt, oi) => `
+          <div class="option-card flex items-start gap-3 p-3.5 rounded-xl ${saved === oi ? 'selected' : ''}"
+               onclick="selectAnswer(${dimIdx},${qi},${oi})" id="opt-${dimIdx}-${qi}-${oi}">
+            <div class="option-dot mt-0.5 ${saved === oi ? 'bg-blue-600 border-blue-600' : ''}"></div>
+            <div class="flex-1">
+              <span class="inline-block text-xs font-semibold text-gray-400 mr-1">Nivel ${oi}</span>
+              <span class="text-sm text-gray-700">${escHtml(opt)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+    container.appendChild(block);
+  });
+
+  document.getElementById('assessError').classList.add('hidden');
+}
+
+function selectAnswer(dimIdx, qi, oi) {
+  state.answers[dimIdx][qi] = oi;
+  // Deselect all, select chosen
+  const opts = document.getElementById(`opts-${dimIdx}-${qi}`);
+  opts.querySelectorAll('.option-card').forEach((el, i) => {
+    const dot = el.querySelector('.option-dot');
+    if (i === oi) {
+      el.classList.add('selected');
+      dot.classList.add('bg-blue-600', 'border-blue-600');
+      dot.classList.remove('border-gray-300');
+    } else {
+      el.classList.remove('selected');
+      dot.classList.remove('bg-blue-600', 'border-blue-600');
+      dot.classList.add('border-gray-300');
+    }
+  });
+}
+
+/* ── RESULTS ───────────────────────────────────────── */
+function showResults() {
+  // Compute scores
+  const dimScores = DIMENSIONS.map((dim, di) => {
+    const total = dim.questions.length * 4;
+    const raw = Object.values(state.answers[di]).reduce((s, v) => s + v, 0);
+    return { raw, total, pct: raw / total };
+  });
+
+  const totalRaw = dimScores.reduce((s, d) => s + d.raw, 0);
+  const totalMax = dimScores.reduce((s, d) => s + d.total, 0);
+  const overallPct = totalRaw / totalMax;
+  const levelIdx = Math.min(4, Math.floor(overallPct * 5));
+  const level = LEVELS[levelIdx];
+
+  // Overall card
+  const card = document.getElementById('overallCard');
+  card.style.background = level.bg;
+  card.style.color = level.text;
+  card.style.borderColor = level.color;
+  card.style.borderWidth = '2px';
+  card.style.borderStyle = 'solid';
+
+  document.getElementById('overallLevel').textContent = `Nivel ${level.id}`;
+  document.getElementById('overallLevelName').textContent = level.name;
+  document.getElementById('overallScore').textContent = `${totalRaw} / ${totalMax} puntos`;
+  document.getElementById('overallDesc').textContent = level.desc;
+  document.getElementById('resOrgName').textContent =
+    `${state.orgName} · ${state.orgSector} · ${state.orgSize}` +
+    (state.evaluatorName ? ` · Evaluado por: ${state.evaluatorName}` : '') +
+    ` · ${new Date().toLocaleDateString('es-ES')}`;
+
+  // Level pips
+  const pipsEl = document.getElementById('levelPips');
+  pipsEl.innerHTML = LEVELS.map((l, i) => `
+    <div class="level-pip" style="background:${i <= levelIdx ? l.color : '#e2e8f0'}; opacity:${i <= levelIdx ? 1 : 0.35}"></div>
+  `).join('');
+
+  // Dimension scores list
+  const dimScoresEl = document.getElementById('dimScores');
+  dimScoresEl.innerHTML = DIMENSIONS.map((dim, di) => {
+    const sc = dimScores[di];
+    const pct = sc.pct;
+    const dimLevelIdx = Math.min(4, Math.floor(pct * 5));
+    const dimLevel = LEVELS[dimLevelIdx];
+    const pctPx = Math.round(pct * 100);
+    return `
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-sm font-medium text-gray-700">${dim.icon} ${dim.title}</span>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:${dimLevel.bg};color:${dimLevel.text}">
+            N${dimLevelIdx} · ${sc.raw}/${sc.total}
+          </span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5">
+          <div class="dim-bar" style="width:${pctPx}%;background:${dimLevel.color}"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Recommendations — sorted by worst first
+  const sorted = DIMENSIONS.map((dim, di) => ({ dim, di, pct: dimScores[di].pct }))
+    .sort((a, b) => a.pct - b.pct);
+
+  const recEl = document.getElementById('recommendations');
+  recEl.innerHTML = sorted.slice(0, 4).map(({ dim, di, pct }) => {
+    const dimLevelIdx = Math.min(4, Math.floor(pct * 5));
+    const dimLevel = LEVELS[dimLevelIdx];
+    const recs = dim.recommendations;
+    return `
+      <div class="rounded-xl border p-4" style="border-color:${dimLevel.color};background:${dimLevel.bg}20">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">${dim.icon}</span>
+          <span class="font-semibold text-gray-800">${dim.title}</span>
+          <span class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full" style="background:${dimLevel.bg};color:${dimLevel.text}">
+            Nivel ${dimLevelIdx} — ${dimLevel.name}
+          </span>
+        </div>
+        <ul class="space-y-1.5">
+          ${recs.map(r => `<li class="text-sm text-gray-700 flex gap-2"><span class="text-gray-400 mt-0.5">▸</span>${escHtml(r)}</li>`).join('')}
+        </ul>
+      </div>`;
+  }).join('');
+
+  // Maturity scale reference
+  document.getElementById('maturityScale').innerHTML = LEVELS.map(l => `
+    <div class="flex gap-4 items-start p-3 rounded-xl ${l.id === levelIdx ? 'ring-2' : ''}" style="${l.id === levelIdx ? `ring-color:${l.color};background:${l.bg}` : ''}">
+      <div class="flex-shrink-0 w-16 text-center">
+        <span class="text-sm font-bold" style="color:${l.color}">Nivel ${l.id}</span>
+        <div class="text-xs font-semibold" style="color:${l.text}">${l.name}</div>
+      </div>
+      <p class="text-sm text-gray-600 leading-relaxed">${l.desc}</p>
+    </div>
+  `).join('');
+
+  // Radar chart
+  buildRadarChart(dimScores);
+
+  showScreen('screen-results');
+}
+
+function buildRadarChart(dimScores) {
+  if (radarChart) { radarChart.destroy(); radarChart = null; }
+  const ctx = document.getElementById('radarChart').getContext('2d');
+  const labels = DIMENSIONS.map(d => d.title.split(' ').slice(0, 2).join(' '));
+  const data = dimScores.map(s => parseFloat((s.pct * 4).toFixed(2)));
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Madurez BIM',
+        data,
+        backgroundColor: 'rgba(37,99,235,0.15)',
+        borderColor: '#2563eb',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#2563eb',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+      }],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          min: 0, max: 4,
+          ticks: { stepSize: 1, font: { size: 10 }, color: '#64748b' },
+          pointLabels: { font: { size: 10 }, color: '#374151' },
+          grid: { color: '#e2e8f0' },
+          angleLines: { color: '#e2e8f0' },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` Puntuación: ${ctx.raw} / 4`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function restartTool() {
+  document.getElementById('orgName').value = '';
+  document.getElementById('orgSector').value = '';
+  document.getElementById('orgSize').value = '';
+  document.getElementById('evaluatorName').value = '';
+  if (radarChart) { radarChart.destroy(); radarChart = null; }
+  showScreen('screen-welcome');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
